@@ -12,6 +12,36 @@ void drawMesh(GLuint shader_program, GLuint vao) {
     glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
+GLuint makeShaderProgram(const char* vertex_shader, const char* fragment_shader) {
+    GLuint vs = glCreateShader(GL_VERTEX_SHADER);//我要创建一个【顶点着色器】的壳子,vs 是一个 GPU 对象的编号
+    glShaderSource(vs, 1, &vertex_shader, NULL);//把这段字符串，塞进刚才那个槽位里。这一步只是“拷代码”，不是执行，也不是编译。
+
+    //vs：要往哪个 shader 塞代码
+
+    //1：一段字符串
+
+    //& vertex_shader：代码内容
+
+    //NULL：字符串长度我自己算
+
+    glCompileShader(vs);//让 GPU 把这段 shader 代码编译成它能执行的机器形式。
+    //同上
+    GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fs, 1, &fragment_shader, NULL);
+    glCompileShader(fs);
+
+    GLuint shader_program = glCreateProgram();//创建一个“程序容器好，我给你一个空盒子，你可以往里面装 shader
+    glAttachShader(shader_program, fs);//把 fragment shader（像素规则）装进盒子
+    glAttachShader(shader_program, vs);//把 vertex shader（点怎么变）也装进去
+    glLinkProgram(shader_program);//让 GPU 把这两个 shader “接线 + 检查 + 合成”
+
+    // 链接完就可以删掉 shader 对象（program 已经把结果“复制/固化”进去了）
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    
+    return shader_program;
+}
+
 int main() {
     if (!glfwInit()) { std::cerr << "Failed to init GLFW\n"; return -1; }//初始化，并且返还真假值,if后面的true了，才会进入if里
     GLFWwindow* win = glfwCreateWindow(640, 480, "Hello GLFW", nullptr, nullptr);//创建窗口和返还地址，前边的是保存
@@ -29,15 +59,15 @@ int main() {
     }
      //窗口是否关闭，没有关闭false while (!glfwWindowShouldClose(win))
         float vertices[] = {
-            -0.5f, -0.5f, 0.0f,
-            0.5f, -0.5f, 0.0f,
-            0.0f, 0.5f, 0.0f
+            -1.0f, -0.5f, 0.0f,
+            -0.4f, -0.5f, 0.0f,
+            -0.7f,  0.5f, 0.0f
         };  
 
         float vertices2[] = {
-            0.0f,-0.5f,0.0f,
-            1.0f,-0.5f,0.0f,
-            0.5f,0.5f,0.0f
+            0.0f, -0.5f, 0.0f,
+            0.6f, -0.5f, 0.0f,
+            0.3f,  0.5f, 0.0f
         };
 
         //如何做到fade背景
@@ -76,6 +106,25 @@ int main() {
         glBindVertexArray(vao); //从现在开始，所有关于‘顶点属性配置’的操作，都记到这个 VAO 里。
         glEnableVertexAttribArray(0);//顶点属性 location = 0 是启用的。默认是所有 attribute 都是关闭的，所以要开机
         glBindBuffer(GL_ARRAY_BUFFER, vbo);//VAO 不会回忆你“之前 bind 过什么 VBO”。
+        glVertexAttribPointer(
+            0,              // 给 shader 的 location 0
+            3,              // 每个顶点 3 个分量
+            GL_FLOAT,       // 每个分量是 float
+            GL_FALSE,       // 不做归一化
+            0,              // 紧密排列
+            NULL            // 从 buffer 开头读
+        );
+
+        GLuint vbo2 = 0;
+        glGenBuffers(1, &vbo2);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo2);
+        glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), vertices2, GL_STATIC_DRAW);
+
+        GLuint vao2 = 0;
+        glGenVertexArrays(1, &vao2);
+        glBindVertexArray(vao2);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo2);
         glVertexAttribPointer(
             0,              // 给 shader 的 location 0
             3,              // 每个顶点 3 个分量
@@ -124,27 +173,7 @@ int main() {
         //“GPU 对屏幕上的每一个像素，都执行一次这个程序，
         //    然后用 FragColor 决定这个像素是什么颜色。”
 
-        GLuint vs = glCreateShader(GL_VERTEX_SHADER);//我要创建一个【顶点着色器】的壳子,vs 是一个 GPU 对象的编号
-        glShaderSource(vs, 1, &vertex_shader, NULL);//把这段字符串，塞进刚才那个槽位里。这一步只是“拷代码”，不是执行，也不是编译。
-        
-        //vs：要往哪个 shader 塞代码
-
-        //1：一段字符串
-
-        //& vertex_shader：代码内容
-
-        //NULL：字符串长度我自己算
-
-        glCompileShader(vs);//让 GPU 把这段 shader 代码编译成它能执行的机器形式。
-        //同上
-        GLuint fs = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fs, 1, &fragment_shader, NULL);
-        glCompileShader(fs);
-
-        GLuint shader_program = glCreateProgram();//创建一个“程序容器好，我给你一个空盒子，你可以往里面装 shader
-        glAttachShader(shader_program, fs);//把 fragment shader（像素规则）装进盒子
-        glAttachShader(shader_program, vs);//把 vertex shader（点怎么变）也装进去
-        glLinkProgram(shader_program);//让 GPU 把这两个 shader “接线 + 检查 + 合成”
+        GLuint shader_program = makeShaderProgram(vertex_shader, fragment_shader);
 
         //因为窗口是实时运行的程序，当渲染的时候每一帧都在运动
         //只要窗口还没被用户关闭，就一直循环。
@@ -200,6 +229,7 @@ int main() {
             
             //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);//线框模式(Wireframe Mode)
             drawMesh(shader_program, vao);
+            drawMesh(shader_program, vao2);
 
             //glUseProgram(shader_program);//告诉 GPU：这一帧画东西要用哪一套 shader 规则。
             //glBindVertexArray(vao);//告诉 GPU：这一帧要从哪个 VAO 读取顶点数据，以及怎么解释这些数据。
