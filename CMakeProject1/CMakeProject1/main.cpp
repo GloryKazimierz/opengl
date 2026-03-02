@@ -34,6 +34,12 @@ int main() {
             0.0f, 0.5f, 0.0f
         };  
 
+        float vertices2[] = {
+            0.0f,-0.5f,0.0f,
+            1.0f,-0.5f,0.0f,
+            0.5f,0.5f,0.0f
+        };
+
         //如何做到fade背景
         //float vertices[] = {
         //    -1.0f, -1.0f, 0.0f,
