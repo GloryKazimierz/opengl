@@ -1,15 +1,28 @@
-# OpenGL Practice
+# OpenGL Practice (GLFW + GLAD)
 
-A small OpenGL learning project.
+A small OpenGL learning project written in C++.
 
-## Current Features
+Right now it renders a single triangle and supports toggling wireframe mode.
+
+## Features
 - Render a triangle
-- Toggle wireframe mode
+- Per-vertex color (from vertex position)
+- Wireframe toggle
 
-## Build (Windows, CMake)
-1. Install a C++ compiler (MSVC or MinGW) and CMake.
-2. Configure and build:
+## Controls
+- **W**: wireframe ON
+- **E**: wireframe OFF
 
+## Tech Stack
+- C++
+- OpenGL (GLSL **330 core**)
+- GLFW (window/input)
+- GLAD (OpenGL loader)
+- CMake
+
+## Build (Windows)
+
+### Option A: Visual Studio (MSVC)
 ```bash
-cmake -S . -B build
-cmake --build build
+cmake -S . -B build -G "Visual Studio 17 2022"
+cmake --build build --config Release
