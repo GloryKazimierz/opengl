@@ -27,7 +27,7 @@ int main() {
         glfwTerminate();//删除库
         return -1;
     }
-    while (!glfwWindowShouldClose(win)) {//窗口是否关闭，没有关闭false
+     //窗口是否关闭，没有关闭false while (!glfwWindowShouldClose(win))
         float vertices[] = {
             -0.5f, -0.5f, 0.0f,
             0.5f, -0.5f, 0.0f,
@@ -213,12 +213,12 @@ int main() {
             glfwSwapBuffers(win);//把这一帧“画好的后台画面”显示到屏幕上。
         }
         //每一帧：处理输入 → 清屏 → 选规则（program）→ 选数据（VAO）→ 画 → 显示
-        glClearColor(0.1f, 0.6f, 0.9f, 1.0f); //将以往的颜色替代成现在的颜色
-        glClear(GL_COLOR_BUFFER_BIT); //清除颜色缓存
-        glfwSwapBuffers(win);
-        glfwPollEvents();//不断更新信息
+        //glClearColor(0.1f, 0.6f, 0.9f, 1.0f); //将以往的颜色替代成现在的颜色
+        //glClear(GL_COLOR_BUFFER_BIT); //清除颜色缓存
+        //glfwSwapBuffers(win);
+        //glfwPollEvents();//不断更新信息
         // 没有事件就睡眠等待，更省电  glfwWaitEvents(); 
-    }//当前面的while循环不结束的时候，不会使用到下面的函数
+    //当前面的while循环不结束的时候，不会使用到下面的函数
     glfwDestroyWindow(win);//删除窗口
     glfwTerminate();//删除glfw的库
     return 0;//程序正常结束，没有错误，return -1就是报错
