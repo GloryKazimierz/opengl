@@ -96,7 +96,19 @@ int main() {
             0.25f, 0.6f, 0.0f,
             0.65f, 0.2f, 0.0f,
             0.65f, 0.6f, 0.0f
-        };
+                };
+
+        float tipToTip[] = {
+            // upright (正三角) - CCW
+            -0.85f,  0.35f, 0.0f,   // shared tip
+            -1.00f,  0.0902f, 0.0f,
+            -0.70f,  0.0902f, 0.0f,
+
+            // inverted (倒三角) - CCW
+            -0.85f,  0.35f, 0.0f,   // shared tip
+            -0.70f,  0.6098f, 0.0f,
+            -1.00f,  0.6098f, 0.0f
+                };
         //如何做到fade背景
         //float vertices[] = {
         //    -1.0f, -1.0f, 0.0f,
@@ -180,6 +192,25 @@ int main() {
             NULL
         );
 
+        GLuint vboTip = 0;
+        glGenBuffers(1, &vboTip);
+        glBindBuffer(GL_ARRAY_BUFFER, vboTip);
+        glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), tipToTip, GL_STATIC_DRAW);
+
+        GLuint vaoTip = 0;
+        glGenVertexArrays(1, &vaoTip);
+        glBindVertexArray(vaoTip);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vboTip);
+        glVertexAttribPointer(
+            0,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            0,
+            NULL
+        );
+
         //必须要写的shader 写死在 C++ 里的字符串 
         // 
         // 顶点着色器可以决定每个顶点在屏幕上的位置
@@ -222,11 +253,23 @@ int main() {
             "void main() {\n"
             " FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n"
             "}\n";
+
+        const char* fragment_shader_light_blue =
+            "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "void main() {\n"
+            " FragColor = vec4(0.0, 0.0, 1.0, 0.2);\n"
+            "}\n";
+
         //“GPU 对屏幕上的每一个像素，都执行一次这个程序，
         //    然后用 FragColor 决定这个像素是什么颜色。”
 
         GLuint shader_program = makeShaderProgram(vertex_shader, fragment_shader);
         GLuint shader_program_yellow = makeShaderProgram(vertex_shader, fragment_shader_yellow);
+        GLuint shader_program_light_blue = makeShaderProgram(vertex_shader, fragment_shader_light_blue);
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         //因为窗口是实时运行的程序，当渲染的时候每一帧都在运动
         //只要窗口还没被用户关闭，就一直循环。
@@ -284,6 +327,25 @@ int main() {
             drawMesh(shader_program, vao);
             drawMesh(shader_program_yellow, vao2);
             drawMesh(shader_program, vaoC, 0, 6);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            
+            drawMesh(shader_program, vaoTip, 0, 6);
+            if (wireframe) {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            }
+            else {
+                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            }
+
+            float oldW = 1.0f;
+            glGetFloatv(GL_LINE_WIDTH, &oldW);  
+
+            if (wireframe) {
+                glLineWidth(20.0f);            
+            }
+            drawMesh(shader_program_light_blue, vaoTip, 0, 6);
+
+            glLineWidth(oldW);
 
             //glUseProgram(shader_program);//告诉 GPU：这一帧画东西要用哪一套 shader 规则。
             //glBindVertexArray(vao);//告诉 GPU：这一帧要从哪个 VAO 读取顶点数据，以及怎么解释这些数据。
