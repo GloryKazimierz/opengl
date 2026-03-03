@@ -6,10 +6,11 @@
 //你需要告诉我：
 //用哪个 shader
 //用哪个 VAO” 这两个参数，正好是画一个物体的最小必需信息。封装
-void drawMesh(GLuint shader_program, GLuint vao) {
+//把0和3变成参数，好处在于可以自定义可以从第几个顶点画，以及要画几个顶点，如果不给值的话默认是0和3
+void drawMesh(GLuint shader_program, GLuint vao, GLint first = 0, GLsizei count = 3) {
     glUseProgram(shader_program);
     glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    glDrawArrays(GL_TRIANGLES, first, count); //如果是从0和3的话 永远是从0个顶点开始画三个顶点，也就是说画一个三角形
 }
 
 GLuint makeShaderProgram(const char* vertex_shader, const char* fragment_shader) {
@@ -42,6 +43,17 @@ GLuint makeShaderProgram(const char* vertex_shader, const char* fragment_shader)
     return shader_program;
 }
 
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+//这是你自己写的一个“回调函数”（callback）。
+//GLFW 会在窗口的 framebuffer 尺寸发生变化时自动调用它。
+//width / height 是新的 framebuffer 尺寸（像素单位）。
+//告诉 OpenGL：从现在开始，用整个窗口大小作为绘制区域。
+//前两个 0, 0：viewport 从左下角开始
+//width, height：viewport 宽高
+//一句话：窗口怎么变，这个函数就把 OpenGL 的绘图区域同步成同样大小。
+
 int main() {
     if (!glfwInit()) { std::cerr << "Failed to init GLFW\n"; return -1; }//初始化，并且返还真假值,if后面的true了，才会进入if里
     GLFWwindow* win = glfwCreateWindow(640, 480, "Hello GLFW", nullptr, nullptr);//创建窗口和返还地址，前边的是保存
@@ -57,19 +69,34 @@ int main() {
         glfwTerminate();//删除库
         return -1;
     }
+    glfwSetFramebufferSizeCallback(win, framebuffer_size_callback);//以后这个窗口 win 只要尺寸变化，就调用 framebuffer_size_callback。
+    int w, h;
+    glfwGetFramebufferSize(win, &w, &h); //问 GLFW 当前 framebuffer 的尺寸是多少（写到 w,h 里）。
+    glViewport(0, 0, w, h); //把 OpenGL 的 viewport 设置成当前尺寸。
+    //因为回调只有“发生变化时”才会触发。启动那一刻你也需要设置一次，否则有时 viewport 还是默认值，第一次显示就会不对。
+   
      //窗口是否关闭，没有关闭false while (!glfwWindowShouldClose(win))
         float vertices[] = {
-            -1.0f, -0.5f, 0.0f,
-            -0.4f, -0.5f, 0.0f,
-            -0.7f,  0.5f, 0.0f
+            -1.0f, -0.6f, 0.0f,
+            -0.5f, -0.6f, 0.0f,
+            -0.75f, 0.1f, 0.0f
         };  
 
         float vertices2[] = {
-            0.0f, -0.5f, 0.0f,
-            0.6f, -0.5f, 0.0f,
-            0.3f,  0.5f, 0.0f
+           -0.2f, -0.6f, 0.0f,
+            0.3f, -0.6f, 0.0f,
+            0.05f, 0.1f, 0.0f
         };
 
+        float connected[] = {
+            0.25f, 0.6f, 0.0f,
+            0.25f, 0.2f, 0.0f,
+            0.65f, 0.2f, 0.0f,
+
+            0.25f, 0.6f, 0.0f,
+            0.65f, 0.2f, 0.0f,
+            0.65f, 0.6f, 0.0f
+        };
         //如何做到fade背景
         //float vertices[] = {
         //    -1.0f, -1.0f, 0.0f,
@@ -132,6 +159,25 @@ int main() {
             GL_FALSE,       // 不做归一化
             0,              // 紧密排列
             NULL            // 从 buffer 开头读
+        );
+
+        GLuint vboC = 0;
+        glGenBuffers(1, &vboC);
+        glBindBuffer(GL_ARRAY_BUFFER, vboC);
+        glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), connected, GL_STATIC_DRAW);
+
+        GLuint vaoC = 0;
+        glGenVertexArrays(1, &vaoC);
+        glBindVertexArray(vaoC);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vboC);
+        glVertexAttribPointer(
+            0,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            0,
+            NULL
         );
 
         //必须要写的shader 写死在 C++ 里的字符串 
@@ -230,6 +276,7 @@ int main() {
             //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);//线框模式(Wireframe Mode)
             drawMesh(shader_program, vao);
             drawMesh(shader_program, vao2);
+            drawMesh(shader_program, vaoC, 0, 6);
 
             //glUseProgram(shader_program);//告诉 GPU：这一帧画东西要用哪一套 shader 规则。
             //glBindVertexArray(vao);//告诉 GPU：这一帧要从哪个 VAO 读取顶点数据，以及怎么解释这些数据。
