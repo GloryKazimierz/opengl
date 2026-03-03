@@ -216,10 +216,17 @@ int main() {
             "    FragColor = vec4(vColor, 1.0);\n"//给与flagcolor参数，给每个像素上色
             "}\n";
         
+        const char* fragment_shader_yellow =
+            "#version 330 core\n"
+            "out vec4 FragColor;\n"
+            "void main() {\n"
+            " FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n"
+            "}\n";
         //“GPU 对屏幕上的每一个像素，都执行一次这个程序，
         //    然后用 FragColor 决定这个像素是什么颜色。”
 
         GLuint shader_program = makeShaderProgram(vertex_shader, fragment_shader);
+        GLuint shader_program_yellow = makeShaderProgram(vertex_shader, fragment_shader_yellow);
 
         //因为窗口是实时运行的程序，当渲染的时候每一帧都在运动
         //只要窗口还没被用户关闭，就一直循环。
@@ -275,7 +282,7 @@ int main() {
             
             //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);//线框模式(Wireframe Mode)
             drawMesh(shader_program, vao);
-            drawMesh(shader_program, vao2);
+            drawMesh(shader_program_yellow, vao2);
             drawMesh(shader_program, vaoC, 0, 6);
 
             //glUseProgram(shader_program);//告诉 GPU：这一帧画东西要用哪一套 shader 规则。
