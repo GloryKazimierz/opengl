@@ -265,9 +265,12 @@ int main() {
             "#version 330 core\n"
             "layout (location = 0) in vec3 aPos;\n"   // 输入1：位置，来自 VAO 的 attrib 0
             "layout (location = 1) in vec3 aColor;\n" // 输入2：颜色，来自 VAO 的 attrib 1
-            "out vec3 vColor;\n"                      // 输出：传给片段着色器（会自动插值）
+            "out vec3 vColor;\n" 
+            // 输出：传给片段着色器（会自动插值）
+            "uniform vec2 uOffset;\n"
             "void main() {\n"
-            "    gl_Position = vec4(aPos + vec3(0.2,0.0,0.0), 1.0);\n" // 你之前坚持的 +0.2 继续保留
+            "    vec3 pos = aPos + vec3(0.2, 0.0, 0.0) + vec3(uOffset, 0.0);\n"
+            "    gl_Position = vec4(pos, 1.0);\n" // 你之前坚持的 +0.2 继续保留
             "    vColor = aColor;\n"                   // 把顶点颜色传下去
             "}\n";
 
@@ -310,8 +313,9 @@ int main() {
             "#version 330 core\n"
             "in vec3 vColor;\n"                        // 接收插值后的颜色
             "out vec4 FragColor;\n"
+            "uniform vec4 ourColor;\n"
             "void main() {\n"
-            "    FragColor = vec4(vColor, 1.0);\n"     // 输出颜色（不透明）
+            "    FragColor = vec4(vColor, 1.0) * ourColor;\n"     // 输出颜色（不透明）
             "}\n";
 
         //“GPU 对屏幕上的每一个像素，都执行一次这个程序，
@@ -321,6 +325,10 @@ int main() {
         GLuint shader_program_yellow = makeShaderProgram(vertex_shader, fragment_shader_yellow);
         GLuint shader_program_light_blue = makeShaderProgram(vertex_shader, fragment_shader_light_blue);
         GLuint shader_program_pos_color = makeShaderProgram(vertex_shader_pos_color, fragment_shader_pos_color);
+
+        glUseProgram(shader_program_pos_color);
+        GLint locOffset = glGetUniformLocation(shader_program_pos_color, "uOffset");
+        GLint locColor = glGetUniformLocation(shader_program_pos_color, "ourColor");
     
 
         glEnable(GL_BLEND);
@@ -379,6 +387,34 @@ int main() {
             //GL_DEPTH_BUFFER_BIT：清掉“深度缓冲”（上一帧的远近信息）
             
             //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);//线框模式(Wireframe Mode)
+
+            glUseProgram(shader_program_pos_color);
+
+            // （可选但推荐）每帧给 uOffset 一个明确值，避免未初始化
+            glUniform2f(locOffset, 0.0f, 0.0f);
+
+            // ---- 按 C 切换模式（你原来的代码）----
+            static bool mode = false;
+            static bool prevC = false;
+
+            bool curC = (glfwGetKey(win, GLFW_KEY_C) == GLFW_PRESS);
+            if (curC && !prevC) {
+                mode = !mode;
+            }
+            prevC = curC;
+
+            // ---- 只在这里设置一次 ourColor ----
+            if (!mode) {
+                // 模式0：呼吸绿色
+                float t = (float)glfwGetTime();
+                float g = (sinf(t) * 0.5f) + 0.5f;   // 0~1 变化
+                glUniform4f(locColor, g , g, g, 1.0f);
+            }
+            else {
+                // 模式1：固定粉色
+                glUniform4f(locColor, 1.0f, 0.2f, 0.6f, 1.0f);
+            }
+
             drawMesh(shader_program, vao);
             drawMesh(shader_program_yellow, vao2);
             drawMesh(shader_program, vaoC, 0, 6);
