@@ -109,6 +109,12 @@ int main() {
             -0.70f,  0.6098f, 0.0f,
             -1.00f,  0.6098f, 0.0f
                 };
+
+        float vertices_pos_color[] = {
+            0.5f, -0.5f, 0.0f,            1.0f, 0.0f, 0.0f,   // 右下角：红色
+            -0.5f, -0.5f, 0.0f,            0.0f, 1.0f, 0.0f,   // 左下角：绿色
+            0.0f,  0.5f, 0.0f,            0.0f, 0.0f, 1.0f    // 顶点：蓝色
+        };
         //如何做到fade背景
         //float vertices[] = {
         //    -1.0f, -1.0f, 0.0f,
@@ -211,6 +217,35 @@ int main() {
             NULL
         );
 
+        GLuint vbo_pc = 0;
+        glGenBuffers(1, &vbo_pc);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_pc);
+        glBufferData(GL_ARRAY_BUFFER, 18 * sizeof(float), vertices_pos_color, GL_STATIC_DRAW);
+
+        GLuint vao_pc = 0;
+        glGenVertexArrays(1, &vao_pc);
+        glBindVertexArray(vao_pc);
+        glEnableVertexAttribArray(0);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo_pc);
+        glVertexAttribPointer(
+            0,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            6 * sizeof(float),
+            (void*)0
+        );
+
+        glEnableVertexAttribArray(1);
+        glVertexAttribPointer(
+            1,
+            3,
+            GL_FLOAT,
+            GL_FALSE,
+            6 * sizeof(float),
+            (void*)(3 * sizeof(float))
+        );
+
         //必须要写的shader 写死在 C++ 里的字符串 
         // 
         // 顶点着色器可以决定每个顶点在屏幕上的位置
@@ -225,6 +260,16 @@ int main() {
             "    gl_Position = vec4(vp+vec3(0.2,0.0,0.0), 1.0);\n"//把一个 3D 点 (x, y, z)，转成 GPU 必须要的 4D 形式(x, y, z, 1)，作为“这个顶点在屏幕上的位置”。
             "vColor = vp*0.5+0.5;\n" //给每个顶点算一个“颜色值” 颜色的区间[0,1] 坐标[-1,1]
             "}\n"; 
+
+        const char* vertex_shader_pos_color =
+            "#version 330 core\n"
+            "layout (location = 0) in vec3 aPos;\n"   // 输入1：位置，来自 VAO 的 attrib 0
+            "layout (location = 1) in vec3 aColor;\n" // 输入2：颜色，来自 VAO 的 attrib 1
+            "out vec3 vColor;\n"                      // 输出：传给片段着色器（会自动插值）
+            "void main() {\n"
+            "    gl_Position = vec4(aPos + vec3(0.2,0.0,0.0), 1.0);\n" // 你之前坚持的 +0.2 继续保留
+            "    vColor = aColor;\n"                   // 把顶点颜色传下去
+            "}\n";
 
         //vec2 = 两个数(x, y)
 
@@ -261,12 +306,22 @@ int main() {
             " FragColor = vec4(0.0, 0.0, 1.0, 0.2);\n"
             "}\n";
 
+        const char* fragment_shader_pos_color =
+            "#version 330 core\n"
+            "in vec3 vColor;\n"                        // 接收插值后的颜色
+            "out vec4 FragColor;\n"
+            "void main() {\n"
+            "    FragColor = vec4(vColor, 1.0);\n"     // 输出颜色（不透明）
+            "}\n";
+
         //“GPU 对屏幕上的每一个像素，都执行一次这个程序，
         //    然后用 FragColor 决定这个像素是什么颜色。”
 
         GLuint shader_program = makeShaderProgram(vertex_shader, fragment_shader);
         GLuint shader_program_yellow = makeShaderProgram(vertex_shader, fragment_shader_yellow);
         GLuint shader_program_light_blue = makeShaderProgram(vertex_shader, fragment_shader_light_blue);
+        GLuint shader_program_pos_color = makeShaderProgram(vertex_shader_pos_color, fragment_shader_pos_color);
+    
 
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -327,6 +382,8 @@ int main() {
             drawMesh(shader_program, vao);
             drawMesh(shader_program_yellow, vao2);
             drawMesh(shader_program, vaoC, 0, 6);
+            drawMesh(shader_program_pos_color, vao_pc);   // 默认 count=3，画一个彩色插值三角形
+
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             
             drawMesh(shader_program, vaoTip, 0, 6);
