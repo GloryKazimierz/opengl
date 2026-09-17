@@ -4,6 +4,76 @@
 #include <filesystem>
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
+#include <fstream>
+#include <string>  
+
+
+bool readAIBackgroundCommand(
+    const std::filesystem::path& path,
+    float& r,
+    float& g,
+    float& b
+)
+{
+    static std::filesystem::file_time_type lastWriteTime{};
+
+    std::error_code ec;
+
+    if (!std::filesystem::exists(path, ec))
+        return false;
+
+    auto currentWriteTime = std::filesystem::last_write_time(path, ec);
+
+    if (ec)
+        return false;
+
+    if (currentWriteTime == lastWriteTime)
+        return false;
+
+    std::ifstream file(path);
+
+    if (!file.is_open())
+        return false;
+
+    std::string command;
+
+    file >> command;
+
+    if (command == "set_background")
+    {
+        float newR;
+        float newG;
+        float newB;
+
+        if (!(file >> newR >> newG >> newB))
+            return false;
+
+        if (newR < 0.0f || newR > 1.0f ||
+            newG < 0.0f || newG > 1.0f ||
+            newB < 0.0f || newB > 1.0f)
+        {
+            return false;
+        }
+
+        r = newR;
+        g = newG;
+        b = newB;
+
+        // 命令已经成功读取，关闭文件
+        file.close();
+
+        // 消费完这条命令后删除文件
+        std::filesystem::remove(path, ec);
+
+        return true;
+    }
+
+    return false;
+    }
+
+
+
+
 
 
 // “我要画一个 mesh，
@@ -84,26 +154,47 @@ int main() {
     glDepthFunc(GL_LESS); // 默认就是这个，写上更清楚
 
     std::cout << "CWD: " << std::filesystem::current_path() << "\n";
+    // 打印程序运行时的当前目录
 
     int width = 0, height = 0, channels = 0;
+    //需要三个变量去装图片的参数， 图片宽度， 图片高度， 通道数
+    //jpg 是 1024， 1024， 3
+    //三个通道就是RGB
+    //如果是PNG就又可能是带有透明度的 所以通道数可能会变为4
+
     stbi_set_flip_vertically_on_load(true); // 可选：让图片上下不倒
+    //加载图片时需要上下翻转的原因是很多图片的坐标原点在左上角，但是opedngl会把0，0理解成左下角，会导致上下颠倒
 
     unsigned char* data = stbi_load("../../../texture/blackice.jpg", &width, &height, &channels, 0);
-    GLuint tex0 = 0;
+    //我需要知道程序是从哪个目录启动的， 去找到他的相对路径， 去找到图片
+    //这一步才是真正的加载图片，做的是去硬盘找图片，读取像素数据，放到CPU内存里
+    //"../../../texture/blackice.jpg" 图片路径
+    //&width, &height, &channels 变量地址传进去 让stbi load去填结果
+    //0表示不需要强行转换通道，原本图片有多少通道就是多少
+    //返回值 data是一个指针 指向一大堆RGB的图片像素数据
+
+    GLuint tex0 = 0; //先准备一个纹理编号，先用一个空的变量接受后面的纹理ID
     if (!data) {
         std::cout << "Failed to load texture: " << stbi_failure_reason() << "\n";
     }
+    //用于判断图片是否加载成功，如果失败会打印原因
+
     else {
         std::cout << "Loaded texture: " << width << "x" << height
             << " channels=" << channels << "\n";
+    //加载成功之后打印信息，比如输出 Loaded texture: 1024x1024 channels=3
 
         // 1) 创建 OpenGL 纹理对象
-        glGenTextures(1, &tex0);
-        glBindTexture(GL_TEXTURE_2D, tex0);
+        glGenTextures(1, &tex0); //向OPENGL要一个纹理对象编号，存到tex0里
+        glBindTexture(GL_TEXTURE_2D, tex0); //绑定纹理 从现在开始，对 GL_TEXTURE_2D 的操作，都作用在 tex0 这张纹理上。
+        //OpenGL 是状态机，你要先 bind，后面的设置才知道作用在哪个对象上。
 
         // 2) 设置纹理参数（先照抄）
+        //GL_REPEAT 表示重复纹理。
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+        //S可以理解成纹理坐标里的 x 方向
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+        //T可以理解成纹理坐标里的 y 方向。
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
@@ -113,7 +204,30 @@ int main() {
 
         // 4) 上传完了再 free
         stbi_image_free(data);
+        //这一步是释放 stbi_load 创建的 CPU 内存。
+        //因为图片已经上传到 GPU 纹理了：
+        //    CPU data → GPU texture
+        //上传完成后，CPU 那份就不需要了。
     }
+
+        //// 1. 加载图片到 CPU
+        //stbi_load(...);
+
+        //// 2. 创建 OpenGL 纹理对象
+        //glGenTextures(...);
+
+        //// 3. 绑定纹理
+        //glBindTexture(...);
+
+        //// 4. 设置纹理参数
+        //glTexParameteri(...);
+
+        //// 5. 上传像素到 GPU
+        //glTexImage2D(...);
+
+        //// 6. 释放 CPU 图片数据
+        //stbi_image_free(...);
+
      //窗口是否关闭，没有关闭false while (!glfwWindowShouldClose(win))
         float vertices[] = {
             -1.0f, -0.6f, 0.0f,
@@ -432,9 +546,23 @@ int main() {
 
         bool wireframe = false; //在内存里创建一个开关变量，名字叫 wireframe。默认不是线框模式
 
+        float backgroundR = 0.0f;
+        float backgroundG = 0.0f;
+        float backgroundB = 0.0f;
+
+        std::filesystem::path aiCommandPath =
+            R"(C:\Users\Wang\Desktop\project\ai_module\renderer_command.txt)";
+
         while (!glfwWindowShouldClose(win)) {
 
             glfwPollEvents();//处理窗口事件 / 输入事件。
+
+            readAIBackgroundCommand(
+                aiCommandPath,
+                backgroundR,
+                backgroundG,
+                backgroundB
+            );
 
             if (glfwGetKey(win, GLFW_KEY_W) == GLFW_PRESS) { //问 GLFW：窗口 win 里，W 键现在是不是被按着？
                 wireframe = true;
@@ -455,7 +583,7 @@ int main() {
             //按住 E → 开关变 false → 实心模式
             //每一帧根据开关，决定用 LINE 还是 FILL
 
-            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClearColor(backgroundR,backgroundG,backgroundB,1.0f);
             //// 黑色(black)
             //glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
