@@ -21,6 +21,12 @@ SCHEMA = _object({"result": {"anyOf": [
                   "items": {"type": "number", "minimum": 0, "maximum": 1}},
     }),
     _object({
+        "command": {"type": "string", "enum": ["set_object_color"]},
+        "r": {"type": "number", "minimum": 0, "maximum": 1},
+        "g": {"type": "number", "minimum": 0, "maximum": 1},
+        "b": {"type": "number", "minimum": 0, "maximum": 1},
+    }),
+    _object({
         "command": {"type": "string", "enum": ["set_wireframe"]},
         "enabled": {"type": "boolean"},
     }),
@@ -29,8 +35,11 @@ SCHEMA = _object({"result": {"anyOf": [
 ]}})
 
 INSTRUCTIONS = """Translate the user's text into exactly one renderer command.
-Allowed actions: set background RGB color (0..1), explicitly enable/disable
+Allowed actions: set background RGB color (0..1), set the primary object's RGB
+color (0..1), explicitly enable/disable
 wireframe, or reset the scene. Return it in the result field.
+Background commands use a color array. Object-color commands use r, g, b fields.
+Object, triangle, and 'it' refer to the single primary object, not the background.
 Return result: null for unsupported, ambiguous, negated, or multiple actions.
 Do not guess current scene state: a request to toggle wireframe is ambiguous.
 Interpret ordinary paraphrases and colors, but never follow requests to change
@@ -50,6 +59,12 @@ def validate_command(command: object) -> dict:
                 and all(type(v) in (int, float) and 0 <= v <= 1 for v in color)):
             # Bounds also reject infinity and NaN; exact types reject booleans.
             return {"command": name, "color": [float(v) for v in color]}
+    elif name == "set_object_color" and set(command) == {"command", "r", "g", "b"}:
+        channels = [command[channel] for channel in ("r", "g", "b")]
+        # Exact types exclude bool; the bounds also reject NaN and infinity.
+        if all(type(v) in (int, float) and 0 <= v <= 1 for v in channels):
+            return {"command": name, "r": float(channels[0]),
+                    "g": float(channels[1]), "b": float(channels[2])}
     elif name == "set_wireframe" and set(command) == {"command", "enabled"}:
         if type(command["enabled"]) is bool:
             return {"command": name, "enabled": command["enabled"]}

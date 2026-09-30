@@ -5,14 +5,17 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include <fstream>
+#include <cmath>
 #include <string>  
 
 
-bool readAIBackgroundCommand(
+bool readAICommand(
     const std::filesystem::path& path,
     float& r,
     float& g,
-    float& b
+    float& b,
+    bool& wireframe,
+    float objectColor[3]
 )
 {
     static std::filesystem::file_time_type lastWriteTime{};
@@ -58,18 +61,46 @@ bool readAIBackgroundCommand(
         r = newR;
         g = newG;
         b = newB;
+    }
+    else if (command == "set_object_color")
+    {
+        float newR, newG, newB;
+        std::string extra;
+        if (!(file >> newR >> newG >> newB) || (file >> extra))
+            return false;
+        if (!std::isfinite(newR) || !std::isfinite(newG) || !std::isfinite(newB) ||
+            newR < 0.0f || newR > 1.0f ||
+            newG < 0.0f || newG > 1.0f ||
+            newB < 0.0f || newB > 1.0f)
+            return false;
 
-        // 命令已经成功读取，关闭文件
-        file.close();
+        objectColor[0] = newR;
+        objectColor[1] = newG;
+        objectColor[2] = newB;
+    }
+    else if (command == "set_wireframe")
+    {
+        std::string enabled;
+        std::string extra;
+        if (!(file >> enabled) || (enabled != "true" && enabled != "false") ||
+            (file >> extra))
+            return false;
 
-        // 消费完这条命令后删除文件
-        std::filesystem::remove(path, ec);
-
-        return true;
+        wireframe = (enabled == "true");
+    }
+    else
+    {
+        return false;
     }
 
-    return false;
-    }
+    // 命令已经成功读取，关闭文件
+    file.close();
+
+    // 消费完这条命令后删除文件
+    std::filesystem::remove(path, ec);
+
+    return true;
+}
 
 
 
@@ -492,8 +523,9 @@ int main() {
         const char* fragment_shader_yellow =
             "#version 330 core\n"
             "out vec4 FragColor;\n"
+            "uniform vec3 objectColor;\n"
             "void main() {\n"
-            " FragColor = vec4(1.0, 1.0, 0.0, 1.0);\n"
+            " FragColor = vec4(objectColor, 1.0);\n"
             "}\n";
 
         const char* fragment_shader_light_blue =
@@ -529,6 +561,7 @@ int main() {
         GLuint shader_program_light_blue = makeShaderProgram(vertex_shader, fragment_shader_light_blue);
         GLuint shader_program_pos_color = makeShaderProgram(vertex_shader_pos_color, fragment_shader_pos_color);
         GLuint shader_program_tex = makeShaderProgram(vertex_shader_tex, fragment_shader_tex);
+        GLint locObjectColor = glGetUniformLocation(shader_program_yellow, "objectColor");
 
         glUseProgram(shader_program_pos_color);
         GLint locOffset = glGetUniformLocation(shader_program_pos_color, "uOffset");
@@ -549,6 +582,8 @@ int main() {
         float backgroundR = 0.0f;
         float backgroundG = 0.0f;
         float backgroundB = 0.0f;
+        // AI controls only the original yellow triangle (vertices2 / vao2).
+        float objectColor[3] = { 1.0f, 1.0f, 0.0f };
 
         std::filesystem::path aiCommandPath =
             R"(C:\Users\Wang\Desktop\project\ai_module\renderer_command.txt)";
@@ -557,11 +592,13 @@ int main() {
 
             glfwPollEvents();//处理窗口事件 / 输入事件。
 
-            readAIBackgroundCommand(
+            readAICommand(
                 aiCommandPath,
                 backgroundR,
                 backgroundG,
-                backgroundB
+                backgroundB,
+                wireframe,
+                objectColor
             );
 
             if (glfwGetKey(win, GLFW_KEY_W) == GLFW_PRESS) { //问 GLFW：窗口 win 里，W 键现在是不是被按着？
@@ -643,6 +680,8 @@ int main() {
             // 画矩形（6个顶点）
             drawMesh(shader_program_tex, vao_tex, 0, 6);
             drawMesh(shader_program, vao);
+            glUseProgram(shader_program_yellow);
+            glUniform3f(locObjectColor, objectColor[0], objectColor[1], objectColor[2]);
             drawMesh(shader_program_yellow, vao2);
             drawMesh(shader_program, vaoC, 0, 6);
             drawMesh(shader_program_pos_color, vao_pc);   // 默认 count=3，画一个彩色插值三角形

@@ -52,6 +52,20 @@ def parse_instruction(text: str) -> dict:
              "mention of edges or normal rendering is not necessarily a request to change "
              "mode. Still reject ambiguous toggles, conflicting or multiple actions, "
              "and unsupported requests."
+             '\nEnglish and Chinese instructions are supported. Enabling wireframe '
+             '(including 打开线框模式 or 开启线框模式) produces '
+             '{"result":{"command":"set_wireframe","enabled":true}}. '
+             'Disabling it (including 关闭线框模式) produces '
+             '{"result":{"command":"set_wireframe","enabled":false}}. '
+             'Use JSON booleans, never strings or numbers for enabled.'
+             '\nObject-color requests (object, triangle, it, 物体, 三角形) target '
+             'one primary triangle. Return set_object_color with numeric r, g, b '
+             'fields in [0,1], for example '
+             '{"result":{"command":"set_object_color","r":1.0,"g":0.0,"b":0.0}}. '
+             'Interpret named colors and descriptions such as light blue, dark red, '
+             'or bright red as reasonable normalized RGB. Keep background requests '
+             'as set_background with a color array; do not change both at once. '
+             'Do not output code, extra operations, or multi-command plans.'
              "\nReturn JSON matching this schema: " + json.dumps(SCHEMA)},
             {"role": "user", "content": text},
         ],

@@ -1,4 +1,4 @@
-"""Write validated background commands to the renderer's file mailbox."""
+"""Write validated color/wireframe commands to the renderer's file mailbox."""
 
 import os
 from pathlib import Path
@@ -13,11 +13,17 @@ BRIDGE_PATH = Path(__file__).resolve().parent / "renderer_command.txt"
 def write_command(command: dict) -> Path:
     """Validate, check bridge support, then publish a complete command file."""
     command = validate_command(command)
-    if command["command"] != "set_background":
+    if command["command"] == "set_background":
+        line = "set_background " + " ".join(str(v) for v in command["color"]) + "\n"
+    elif command["command"] == "set_object_color":
+        line = "set_object_color " + " ".join(str(command[c]) for c in ("r", "g", "b")) + "\n"
+    elif command["command"] == "set_wireframe":
+        line = "set_wireframe " + ("true" if command["enabled"] else "false") + "\n"
+    else:
         raise ValueError(
-            f"Bridge does not support {command['command']} yet; only set_background is supported."
+            f"Bridge does not support {command['command']} yet; "
+            "only set_background, set_object_color and set_wireframe are supported."
         )
-    line = "set_background " + " ".join(str(v) for v in command["color"]) + "\n"
     temporary = None
     try:
         # Same directory keeps replacement on the same filesystem. Close the

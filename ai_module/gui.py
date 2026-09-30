@@ -22,7 +22,7 @@ class ControlWindow:
 
         panel = ttk.Frame(root, padding=16)
         panel.pack(fill="both", expand=True)
-        ttk.Label(panel, text="Describe a background change:").pack(anchor="w")
+        ttk.Label(panel, text="Describe a background, object color, or wireframe change:").pack(anchor="w")
         row = ttk.Frame(panel)
         row.pack(fill="x", pady=(8, 12))
         self.entry = ttk.Entry(row)
@@ -31,7 +31,7 @@ class ControlWindow:
         self.button = ttk.Button(row, text="Send", command=self.send)
         self.button.pack(side="right", padx=(8, 0))
 
-        self.status = tk.StringVar(value="Ready — Ollama parser; background bridge only.")
+        self.status = tk.StringVar(value="Ready — background, object color, and wireframe controls.")
         ttk.Label(panel, textvariable=self.status, wraplength=440).pack(anchor="w")
         self.output = ScrolledText(panel, wrap="word", height=14, state="disabled")
         self.output.pack(fill="both", expand=True, pady=(12, 0))
