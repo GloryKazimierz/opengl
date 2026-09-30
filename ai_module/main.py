@@ -15,7 +15,7 @@ def main() -> int:
     parser.add_argument("--parser", choices=("rules", "llm", "ollama"), default="rules",
                         help="Parser backend (default: rules)")
     parser.add_argument("--bridge", action="store_true",
-                        help="Also publish background/object-color/wireframe commands to renderer_command.txt")
+                        help="Also publish background commands to renderer_command.txt")
     args = parser.parse_args()
 
     try:
